@@ -1,0 +1,394 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; scroll-behavior: smooth; }
+
+:root {
+  --azul:        #1a6dbf;
+  --azul-escuro: #0a3566;
+  --azul-claro:  #e8f2fc;
+  --laranja:     #f47c20;
+  --laranja-esc: #d4640e;
+  --laranja-bg:  #fff4ec;
+  --branco:      #ffffff;
+  --cinza-bg:    #f4f7fb;
+  --cinza-borda: #dce7f3;
+  --texto:       #0d1f35;
+  --texto-sec:   #4e6a8a;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: var(--cinza-bg);
+  color: var(--texto);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================ */
+/* HEADER FIXO                                                   */
+/* ============================================================ */
+.painel-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  height: 66px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 80px;
+  background: rgba(255,255,255,0.96);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--cinza-borda);
+}
+
+.painel-logo {
+  font-family: 'Nunito', sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--azul);
+  letter-spacing: -0.5px;
+}
+
+.painel-nav {
+  display: flex;
+  gap: 36px;
+}
+.painel-nav a {
+  text-decoration: none;
+  color: var(--texto-sec);
+  font-weight: 500;
+  font-size: 15px;
+  transition: color 0.2s;
+}
+.painel-nav a:hover { color: var(--azul); }
+
+.painel-badge {
+  background-color: var(--azul-claro);
+  color: var(--azul);
+  padding: 7px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1.5px solid #b8d5f3;
+}
+
+/* ============================================================ */
+/* HERO                                                          */
+/* ============================================================ */
+.painel-hero {
+  margin-top: 66px;
+  background: linear-gradient(135deg, var(--azul-escuro) 0%, #0f4a87 50%, var(--azul) 100%);
+  padding: 96px 80px 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: flex-end;
+  gap: 48px;
+  position: relative;
+  overflow: hidden;
+  min-height: 480px;
+}
+
+/* círculo decorativo laranja */
+.painel-hero-circulo {
+  position: absolute;
+  right: 12%;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 340px; height: 340px;
+  border-radius: 50%;
+  background: var(--laranja);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+/* onda branca na base */
+.painel-hero::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0;
+  width: 100%; height: 56px;
+  background: var(--cinza-bg);
+  border-radius: 50% 50% 0 0 / 56px 56px 0 0;
+}
+
+.painel-hero-conteudo {
+  position: relative;
+  z-index: 1;
+  padding-bottom: 80px;
+}
+
+.painel-tagline {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--laranja);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.painel-hero-conteudo h1 {
+  font-family: 'Nunito', sans-serif;
+  font-size: 50px;
+  font-weight: 900;
+  color: #fff;
+  line-height: 1.08;
+  letter-spacing: -1.5px;
+  margin-bottom: 20px;
+}
+
+.destaque-laranja { color: var(--laranja); }
+
+.painel-hero-conteudo p {
+  font-size: 16px;
+  color: rgba(255,255,255,0.68);
+  line-height: 1.75;
+  max-width: 400px;
+  margin-bottom: 36px;
+}
+
+.painel-hero-btns {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+
+.btn-hero-laranja {
+  text-decoration: none;
+  background-color: var(--laranja);
+  color: #fff;
+  padding: 14px 32px;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 15px;
+  box-shadow: 0 8px 24px rgba(244,124,32,0.45);
+  transition: background-color 0.2s, transform 0.15s;
+}
+.btn-hero-laranja:hover { background-color: var(--laranja-esc); transform: translateY(-2px); }
+
+.btn-hero-outline {
+  text-decoration: none;
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+  padding: 14px 32px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  border: 1.5px solid rgba(255,255,255,0.25);
+  transition: background 0.2s, transform 0.15s;
+}
+.btn-hero-outline:hover { background: rgba(255,255,255,0.18); transform: translateY(-2px); }
+
+.painel-hero-emoji {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 16px;
+  padding-bottom: 64px;
+}
+.painel-hero-emoji span {
+  font-size: 80px;
+  filter: drop-shadow(0 12px 24px rgba(0,0,0,0.25));
+  animation: float 3s ease-in-out infinite;
+}
+.painel-hero-emoji span:nth-child(2) { font-size: 96px; animation-delay: 0.4s; }
+.painel-hero-emoji span:nth-child(3) { animation-delay: 0.8s; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-12px); }
+}
+
+/* ============================================================ */
+/* CARDS DE STATS                                                */
+/* ============================================================ */
+.stats-section {
+  display: flex;
+  gap: 24px;
+  padding: 56px 80px;
+  background-color: var(--cinza-bg);
+}
+
+.stat-card {
+  flex: 1;
+  background: var(--branco);
+  border-radius: 20px;
+  border: 1.5px solid var(--cinza-borda);
+  padding: 32px 28px;
+  text-align: center;
+  transition: transform 0.25s, box-shadow 0.25s;
+}
+.stat-card:hover { transform: translateY(-6px); box-shadow: 0 16px 40px rgba(26,109,191,0.12); }
+
+.stat-icon {
+  font-size: 40px;
+  margin-bottom: 16px;
+}
+.stat-card h3 {
+  font-family: 'Nunito', sans-serif;
+  font-size: 48px;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.stat-card p {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--texto-sec);
+}
+.stat-card.azul h3    { color: var(--azul); }
+.stat-card.verde h3   { color: #1a9e6a; }
+.stat-card.laranja h3 { color: var(--laranja); }
+
+/* ============================================================ */
+/* SEÇÕES DE FORMULÁRIO (estilo landing)                        */
+/* ============================================================ */
+.form-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 80px;
+  padding: 96px 80px;
+}
+
+.form-section-esquerda { background-color: var(--branco); }
+.form-section-direita  { background-color: var(--cinza-bg); }
+
+/* Texto lateral */
+.form-section-texto {
+  position: relative;
+}
+
+.section-tag {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--laranja);
+  margin-bottom: 14px;
+}
+
+.form-section-texto h2 {
+  font-family: 'Nunito', sans-serif;
+  font-size: 40px;
+  font-weight: 900;
+  color: var(--texto);
+  letter-spacing: -1px;
+  line-height: 1.1;
+  margin-bottom: 16px;
+}
+
+.form-section-texto p {
+  font-size: 16px;
+  color: var(--texto-sec);
+  line-height: 1.8;
+  max-width: 380px;
+}
+
+.form-deco-emoji {
+  font-size: 80px;
+  margin-top: 32px;
+  opacity: 0.15;
+  user-select: none;
+}
+
+/* Card do formulário */
+.form-card {
+  background: var(--branco);
+  border-radius: 24px;
+  border: 1.5px solid var(--cinza-borda);
+  padding: 48px 52px;
+  box-shadow: 0 4px 8px rgba(26,109,191,0.04), 0 20px 56px rgba(26,109,191,0.08);
+  position: relative;
+  overflow: hidden;
+}
+
+.form-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--azul) 0%, var(--laranja) 100%);
+}
+
+/* Na seção direita o card fica sem sombra extra (já tem bg diferente) */
+.form-section-direita .form-card {
+  box-shadow: 0 4px 8px rgba(26,109,191,0.06), 0 20px 56px rgba(26,109,191,0.1);
+}
+
+/* ---- Inputs com label ---- */
+.meu-formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--texto);
+  letter-spacing: 0.2px;
+}
+
+.meu-formulario input {
+  padding: 13px 16px;
+  border: 1.5px solid var(--cinza-borda);
+  border-radius: 10px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  background-color: var(--cinza-bg);
+  color: var(--texto);
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
+}
+.meu-formulario input::placeholder { color: #a0b8d0; }
+.meu-formulario input:focus {
+  border-color: var(--azul);
+  background-color: var(--branco);
+  box-shadow: 0 0 0 4px rgba(26,109,191,0.1);
+}
+
+.btn-sucesso {
+  background: linear-gradient(135deg, var(--azul) 0%, var(--azul-escuro) 100%);
+  color: #fff;
+  border: none;
+  padding: 15px;
+  border-radius: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  letter-spacing: 0.3px;
+  box-shadow: 0 6px 20px rgba(26,109,191,0.35);
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+  width: 100%;
+}
+.btn-sucesso:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 10px 28px rgba(26,109,191,0.4); }
+
+.btn-sucesso-laranja {
+  background: linear-gradient(135deg, var(--laranja) 0%, var(--laranja-esc) 100%);
+  box-shadow: 0 6px 20px rgba(244,124,32,0.35);
+}
+.btn-sucesso-laranja:hover { box-shadow: 0 10px 28px rgba(244,124,32,0.4); }
+
+/* ============================================================ */
+/* FOOTER                                                        */
+/* ============================================================ */
+.painel-footer {
+  text-align: center;
+  padding: 36px 80px;
+  border-top: 1px solid var(--cinza-borda);
+  color: #8faabf;
+  font-size: 13px;
+  background-color: var(--branco);
+}

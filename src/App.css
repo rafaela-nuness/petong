@@ -1,0 +1,295 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Nunito:wght@400;600;700;800;900&display=swap');
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --azul:        #1a6dbf;
+  --azul-escuro: #0a3566;
+  --laranja:     #f47c20;
+  --laranja-esc: #d4640e;
+  --laranja-bg:  #fff4ec;
+  --branco:      #ffffff;
+  --cinza-bg:    #f4f7fb;
+  --cinza-borda: #dce7f3;
+  --texto:       #0d1f35;
+  --texto-sec:   #4e6a8a;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: var(--cinza-bg);
+  color: var(--texto);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ============================================================ */
+/* LAYOUT PRINCIPAL                                              */
+/* ============================================================ */
+.container-sistema {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+}
+
+/* ============================================================ */
+/* SIDEBAR                                                       */
+/* ============================================================ */
+.sidebar {
+  width: 256px;
+  background: linear-gradient(180deg, var(--azul-escuro) 0%, #0f4a87 60%, var(--azul) 100%);
+  padding: 32px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.logo h2 {
+  font-family: 'Nunito', sans-serif;
+  font-size: 22px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+}
+
+.logo-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.45);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-top: 3px;
+  margin-bottom: 40px;
+}
+
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.menu button {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.55);
+  text-align: left;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 13px 16px;
+  border-radius: 12px;
+  transition: all 0.2s;
+  width: 100%;
+}
+.menu button:hover {
+  background-color: rgba(255,255,255,0.1);
+  color: #ffffff;
+}
+.menu button.active {
+  background-color: var(--laranja);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 4px 16px rgba(244,124,32,0.45);
+}
+
+.sidebar-footer {
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 20px;
+  margin-top: 16px;
+}
+.sidebar-footer p {
+  font-size: 12px;
+  color: rgba(255,255,255,0.3);
+  text-align: center;
+}
+
+/* ============================================================ */
+/* CONTEÚDO PRINCIPAL                                           */
+/* ============================================================ */
+.conteudo-principal {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--cinza-bg);
+}
+
+/* ---- Topo / Banner de página ---- */
+.topo {
+  background: linear-gradient(135deg, var(--azul-escuro) 0%, var(--azul) 100%);
+  padding: 36px 52px 52px;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.topo::before {
+  content: '';
+  position: absolute;
+  top: -80px; right: -80px;
+  width: 260px; height: 260px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.05);
+  pointer-events: none;
+}
+.topo::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0;
+  width: 100%; height: 28px;
+  background: var(--cinza-bg);
+  border-radius: 50% 50% 0 0 / 28px 28px 0 0;
+}
+.topo h1 {
+  font-family: 'Nunito', sans-serif;
+  font-size: 28px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
+  position: relative;
+  z-index: 1;
+}
+.topo p {
+  color: rgba(255,255,255,0.58);
+  font-size: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Cards Indicadores ---- */
+.cards-indicadores {
+  display: flex;
+  gap: 20px;
+  padding: 32px 52px 0;
+}
+
+.card-mini {
+  flex: 1;
+  background-color: var(--branco);
+  padding: 24px 22px;
+  border-radius: 16px;
+  border: 1.5px solid var(--cinza-borda);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.card-mini:hover { transform: translateY(-3px); box-shadow: 0 10px 28px rgba(26,109,191,0.12); }
+
+.card-mini h3 {
+  font-family: 'Nunito', sans-serif;
+  font-size: 40px;
+  font-weight: 900;
+  line-height: 1;
+  margin-bottom: 8px;
+  color: var(--texto);
+}
+.card-mini p {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--texto-sec);
+}
+.card-mini.azul h3    { color: var(--azul); }
+.card-mini.verde h3   { color: #1a9e6a; }
+.card-mini.laranja h3 { color: var(--laranja); }
+
+/* ---- Boas-vindas ---- */
+.boas-vindas {
+  background-color: var(--branco);
+  padding: 32px 40px;
+  border-radius: 16px;
+  border: 1.5px solid var(--cinza-borda);
+  margin: 28px 52px 0;
+}
+.boas-vindas h2 {
+  font-family: 'Nunito', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--texto);
+  margin-bottom: 8px;
+}
+.boas-vindas p { color: var(--texto-sec); font-size: 14px; line-height: 1.7; }
+
+/* ---- Formulário centralizado ---- */
+.formulario-secao {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 52px;
+  background:
+    radial-gradient(ellipse at 70% 25%, rgba(26,109,191,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 15% 80%, rgba(244,124,32,0.05) 0%, transparent 50%);
+}
+
+.formulario-secao section {
+  background: var(--branco);
+  border-radius: 24px;
+  border: 1.5px solid var(--cinza-borda);
+  padding: 52px 56px;
+  max-width: 500px;
+  width: 100%;
+  box-shadow: 0 2px 4px rgba(26,109,191,0.04), 0 16px 48px rgba(26,109,191,0.09);
+  position: relative;
+  overflow: hidden;
+}
+.formulario-secao section::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--azul) 0%, var(--laranja) 100%);
+}
+
+.formulario-secao h2 {
+  font-family: 'Nunito', sans-serif;
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--texto);
+  margin-bottom: 4px;
+  letter-spacing: -0.3px;
+}
+
+.meu-formulario {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  margin-top: 28px;
+}
+
+.meu-formulario input {
+  padding: 14px 18px;
+  border: 1.5px solid var(--cinza-borda);
+  border-radius: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  background-color: var(--cinza-bg);
+  color: var(--texto);
+  width: 100%;
+  outline: none;
+  transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
+}
+.meu-formulario input::placeholder { color: #8faabf; }
+.meu-formulario input:focus {
+  border-color: var(--azul);
+  background-color: var(--branco);
+  box-shadow: 0 0 0 4px rgba(26,109,191,0.1);
+}
+
+.btn-sucesso {
+  background: linear-gradient(135deg, var(--azul) 0%, var(--azul-escuro) 100%);
+  color: #fff;
+  border: none;
+  padding: 15px;
+  border-radius: 12px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  letter-spacing: 0.3px;
+  box-shadow: 0 6px 20px rgba(26,109,191,0.35);
+  transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+.btn-sucesso:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 10px 28px rgba(26,109,191,0.4); }
