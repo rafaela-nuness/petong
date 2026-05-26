@@ -3,129 +3,207 @@ const mysql = require('mysql2');
 const cors = require('cors');
 
 const app = express();
-app.use(express.json());
 app.use(cors());
+app.use(express.json());
 
-// Conexão com o banco local
+// CONFIGURAÇÃO DA CONEXÃO COM O BANCO DE DADOS
 const db = mysql.createConnection({
     host: 'localhost',
     user: 'root',      
-    password: 'senai103', 
-    database: 'petong'
+    password: 'senai103', // 👈 Insira aqui a senha do seu MySQL
+    database: 'petong' 
 });
 
-db.connect((err) => {
+db.connect(err => {
     if (err) {
-        console.error('Erro ao conectar no MySQL:', err);
+        console.error('Erro de conexao no MySQL:', err);
     } else {
-        console.log('Conectado com sucesso ao banco petong! 🚀');
+        console.log('Banco de dados MySQL conectado com sucesso.');
     }
 });
 
-// ==========================================
-// 🐾 CRUD: PETS (INTEGRADO COM RELACIONAMENTO)
-// ==========================================
+// ====== AUTENTICAÇÃO: LOGIN ======
+app.post('/login', (req, res) => {
+    const { email, senha } = req.body;
 
-// 1. Cadastrar (INSERT)
-app.post('/pets', (req, res) => {
-    const { nome, especie, idade, adotante_id } = req.body;
+    if (email === 'admin@petong.com' && senha === 'admin123') {
+        return res.status(200).json({ id: 0, nome: 'Administrador Principal', email: 'admin@petong.com', tipo: 'admin' });
+    }
+
+    const sql = "SELECT id, nome, email, tipo FROM usuarios WHERE email = ? AND senha = ?";
+    db.query(sql, [email, senha], (err, results) => {
+        if (err) return res.status(500).send({ mensagem: 'Erro interno no servidor.' });
+        if (results.length > 0) {
+            res.status(200).json(results[0]);
+        } else {
+            res.status(401).send({ mensagem: 'Credenciais inválidas.' });
+        }
+    });
+});
+
+// ====== AUTENTICAÇÃO: CADASTRO ======
+app.post('/usuarios', (req, res) => {
+    const { nome, email, senha } = req.body;
     
-    const valAdotanteId = (adotante_id === '' || adotante_id === undefined || adotante_id === null) ? null : Number(adotante_id);
-
-    const sql = "INSERT INTO pets (nome, especie, idade, adotante_id) VALUES (?, ?, ?, ?)";
-    db.query(sql, [nome, especie, idade, valAdotanteId], (err, result) => {
-        if (err) return res.status(500).send({ error: err.message });
-        res.status(201).send('Pet cadastrado com sucesso! 🎉');
+    const sql = "INSERT INTO usuarios (nome, email, senha, tipo) VALUES (?, ?, ?, 'user')";
+    db.query(sql, [nome, email, senha], (err, result) => {
+        if (err) return res.status(400).send({ message: 'O e-mail informado ja esta em uso.' });
+        
+        const novoUsuarioId = result.insertId;
+        const sqlAdotante = "INSERT INTO adotantes (id, nome, email) VALUES (?, ?, ?)";
+        db.query(sqlAdotante, [novoUsuarioId, nome, email], (errAdotante) => {
+            if (errAdotante) return res.status(500).send({ mensagem: 'Erro ao vincular perfil de adotante.' });
+            res.status(201).send({ mensagem: 'Cadastro realizado com sucesso.' });
+        });
     });
 });
 
-// 2. Listar (SELECT COM LEFT JOIN)
+// ====== CRUD DE PETS: APENAS PAGINAÇÃO GERAL ======
 app.get('/pets', (req, res) => {
-    const sql = `
-        SELECT 
-            pets.id, 
-            pets.nome, 
-            pets.especie, 
-            pets.idade, 
-            pets.adotante_id,
-            adotantes.nome AS nome_adotante 
-        FROM pets
-        LEFT JOIN adotantes ON pets.adotante_id = adotantes.id
-    `;
-    db.query(sql, (err, results) => {
-        if (err) return res.status(500).send({ error: err.message });
-        res.status(200).json(results);
+    const { pagina } = req.query;
+    
+    const itensPorPagina = 6; 
+    const atualPagina = parseInt(pagina) || 1;
+    const offset = (atualPagina - 1) * itensPorPagina;
+
+    const sqlContagem = "SELECT COUNT(*) AS total FROM pets";
+    
+    db.query(sqlContagem, (errCount, countResults) => {
+        if (errCount) return res.status(500).send(errCount);
+        
+        const totalItens = countResults[0].total;
+        const totalPaginas = Math.ceil(totalItens / itensPorPagina);
+
+        const sqlDados = `
+            SELECT pets.*, adotantes.nome AS nome_adotante 
+            FROM pets 
+            LEFT JOIN adotantes ON pets.adotante_id = adotantes.id
+            ORDER BY pets.id DESC
+            LIMIT ? OFFSET ?
+        `;
+        
+        db.query(sqlDados, [itensPorPagina, offset], (errData, dataResults) => {
+            if (errData) return res.status(500).send(errData);
+            
+            res.json({
+                pets: dataResults,
+                totalPaginas: totalPaginas || 1,
+                paginaAtual: atualPagina
+            });
+        });
     });
 });
 
-// 3. Atualizar (UPDATE) — COM LOGS DE DIAGNÓSTICO
+app.post('/pets', (req, res) => {
+    const { nome, especie, idade, historia } = req.body;
+    const sql = "INSERT INTO pets (nome, especie, idade, historia, status_adocao) VALUES (?, ?, ?, ?, 'disponivel')";
+    db.query(sql, [nome, especie, idade, historia || ''], (err) => {
+        if (err) return res.status(500).send({ mensagem: 'Erro ao registrar pet.' });
+        res.status(201).send({ mensagem: 'Pet incluído com sucesso.' });
+    });
+});
+
 app.put('/pets/:id', (req, res) => {
     const { id } = req.params;
-    const { nome, especie, idade, adotante_id } = req.body;
+    const { nome, especie, idade, adotante_id, historia } = req.body;
+    
+    const status = adotante_id ? 'adotado' : 'disponivel';
+    const valAdotante = adotante_id || null;
 
-    // ← DIAGNÓSTICO: mostra tudo que chegou do frontend
-    console.log("📥 PUT /pets/" + id + " — body recebido:", req.body);
-    console.log("🔎 adotante_id:", adotante_id, "| tipo:", typeof adotante_id);
-
-    const valAdotanteId = (adotante_id === '' || adotante_id === undefined || adotante_id === null) ? null : Number(adotante_id);
-
-    console.log("💾 valAdotanteId que vai pro banco:", valAdotanteId);
-
-    const sql = "UPDATE pets SET nome = ?, especie = ?, idade = ?, adotante_id = ? WHERE id = ?";
-    db.query(sql, [nome, especie, idade, valAdotanteId, id], (err, result) => {
-        if (err) {
-            console.error("❌ Erro no UPDATE:", err.message);
-            return res.status(500).send({ error: err.message });
-        }
-        console.log("✅ UPDATE executado — affectedRows:", result.affectedRows);
-        res.status(200).send('Pet atualizado com sucesso! 🔄');
+    const sql = "UPDATE pets SET nome = ?, especie = ?, idade = ?, adotante_id = ?, status_adocao = ?, historia = ? WHERE id = ?";
+    db.query(sql, [nome, especie, idade, valAdotante, status, historia || '', id], (err) => {
+        if (err) return res.status(500).send({ mensagem: 'Erro ao atualizar dados.' });
+        res.send({ mensagem: 'Registro modificado com sucesso.' });
     });
 });
 
-// 4. Deletar (DELETE)
 app.delete('/pets/:id', (req, res) => {
     const { id } = req.params;
-    const sql = "DELETE FROM pets WHERE id = ?";
-    db.query(sql, [id], (err, result) => {
-        if (err) return res.status(500).send({ error: err.message });
-        res.status(200).send('Pet removido com sucesso! 🗑️');
+    db.query("DELETE FROM pets WHERE id = ?", [id], (err) => {
+        if (err) return res.status(500).send({ mensagem: 'Incapaz de remover o registro.' });
+        res.send({ message: 'Pet excluído com sucesso.' });
     });
 });
 
-// ==========================================
-// 👤 CRUD: ADOTANTES
-// ==========================================
+// ====== HISTÓRICO E SOLICITAÇÕES ======
+app.post('/solicitacoes', (req, res) => {
+    const { usuario_id, pet_id } = req.body;
+    const sqlVerificar = "SELECT * FROM solicitacoes_adocao WHERE pet_id = ? AND status = 'pendente'";
+    
+    db.query(sqlVerificar, [pet_id], (err, results) => {
+        if (err) return res.status(500).send(err);
+        if (results.length > 0) return res.status(400).send({ mensagem: 'Este animal ja possui uma intencao em analise.' });
 
-// 1. Cadastrar (INSERT)
-app.post('/adotantes', (req, res) => {
-    const { nome, telefone, email } = req.body;
-    const sql = "INSERT INTO adotantes (nome, telefone, email) VALUES (?, ?, ?)";
-    db.query(sql, [nome, telefone, email], (err, result) => {
-        if (err) return res.status(500).send({ error: err.message });
-        res.status(201).send('Adotante cadastrado com sucesso! 👤✨');
+        const sqlSolicitacao = "INSERT INTO solicitacoes_adocao (usuario_id, pet_id) VALUES (?, ?)";
+        db.query(sqlSolicitacao, [usuario_id, pet_id], (err) => {
+            if (err) return res.status(500).send(err);
+            db.query("UPDATE pets SET status_adocao = 'pendente' WHERE id = ?", [pet_id], () => {
+                res.status(201).send({ mensagem: 'Intencao enviada para analise.' });
+            });
+        });
     });
 });
 
-// 2. Listar (SELECT)
-app.get('/adotantes', (req, res) => {
-    const sql = "SELECT * FROM adotantes";
+app.get('/solicitacoes', (req, res) => {
+    const sql = `
+        SELECT solicitacoes_adocao.*, usuarios.nome AS nome_usuario, usuarios.email AS email_usuario, pets.nome AS nome_pet, pets.especie 
+        FROM solicitacoes_adocao
+        JOIN usuarios ON solicitacoes_adocao.usuario_id = usuarios.id
+        JOIN pets ON solicitacoes_adocao.pet_id = pets.id
+        WHERE solicitacoes_adocao.status = 'pendente'
+    `;
     db.query(sql, (err, results) => {
-        if (err) return res.status(500).send({ error: err.message });
-        res.status(200).json(results);
+        if (err) return res.status(500).send(err);
+        res.json(results);
     });
 });
 
-// 3. Deletar (DELETE)
-app.delete('/adotantes/:id', (req, res) => {
+app.get('/solicitacoes/usuario/:id', (req, res) => {
     const { id } = req.params;
-    const sql = "DELETE FROM adotantes WHERE id = ?";
-    db.query(sql, [id], (err, result) => {
-        if (err) return res.status(500).send({ error: err.message });
-        res.status(200).send('Adotante removido com sucesso! 🗑️');
+    const sql = `
+        SELECT solicitacoes_adocao.*, pets.nome AS nome_pet, pets.especie, pets.idade
+        FROM solicitacoes_adocao
+        JOIN pets ON solicitacoes_adocao.pet_id = pets.id
+        WHERE solicitacoes_adocao.usuario_id = ?
+        ORDER BY solicitacoes_adocao.id DESC
+    `;
+    db.query(sql, [id], (err, results) => {
+        if (err) return res.status(500).send(err);
+        res.json(results);
     });
 });
 
-// Ligar o Servidor
+app.put('/solicitacoes/:id', (req, res) => {
+    const { id } = req.params;
+    const { acao } = req.body;
+
+    db.query("SELECT * FROM solicitacoes_adocao WHERE id = ?", [id], (err, results) => {
+        if (err || results.length === 0) return res.status(404).send({ mensagem: 'Solicitacao nao localizada.' });
+        const { usuario_id, pet_id } = results[0];
+
+        if (acao === 'aprovar') {
+            db.query("UPDATE pets SET adotante_id = ?, status_adocao = 'adotado' WHERE id = ?", [usuario_id, pet_id], () => {
+                db.query("UPDATE solicitacoes_adocao SET status = 'aprovado' WHERE id = ?", [id], () => {
+                    res.send({ mensagem: 'Adocao homologada com sucesso.' });
+                });
+            });
+        } else {
+            db.query("UPDATE pets SET status_adocao = 'disponivel' WHERE id = ?", [pet_id], () => {
+                db.query("UPDATE solicitacoes_adocao SET status = 'recusado' WHERE id = ?", [id], () => {
+                    res.send({ mensagem: 'Solicitacao arquivada.' });
+                });
+            });
+        }
+    });
+});
+
+app.get('/adotantes', (req, res) => {
+    db.query("SELECT * FROM adotantes", (err, results) => {
+        if (err) return res.status(500).send(err);
+        res.json(results);
+    });
+});
+
 app.listen(5000, () => {
-    console.log('Servidor rodando na porta 5000 🔥');
+    console.log('Servidor backend ativo na porta 5000');
 });

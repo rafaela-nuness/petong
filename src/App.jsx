@@ -2,32 +2,73 @@ import React, { useState, useEffect } from 'react';
 import './App.css';
 
 function App() {
-  // Estados para os formulários de Cadastro
-  const [formPet, setFormPet] = useState({ nome: '', especie: '', idade: '', adotante_id: '' });
-  const [formAdotante, setFormAdotante] = useState({ nome: '', telefone: '', email: '' });
+  // --- ESTADOS DE SESSÃO ---
+  const [usuarioLogado, setUsuarioLogado] = useState(null);
+  const [telaAutenticacao, setTelaAutenticacao] = useState('login');
+  
+  // --- FORMULÁRIOS ---
+  const [formAuth, setFormAuth] = useState({ nome: '', email: '', senha: '' });
+  const [formPet, setFormPet] = useState({ nome: '', especie: '', idade: '', historia: '' });
+  const [formEdicaoPet, setFormEdicaoPet] = useState({ nome: '', especie: '', idade: '', adotante_id: '', historia: '' });
 
-  // Listas vindas do banco de dados
+  // --- PAGINAÇÃO (SEM FILTROS DE BUSCA) ---
+  const [paginaAtual, setPaginaAtual] = useState(1);
+  const [totalPaginas, setTotalPaginas] = useState(1);
+
+  // --- ARMAZENAMENTO DE DADOS ---
   const [listaPets, setListaPets] = useState([]);
   const [listaAdotantes, setListaAdotantes] = useState([]);
-
-  // Estado para controlar quem está sendo editado neste momento
+  const [solicitacoes, setSolicitacoes] = useState([]); 
+  const [historicoUsuario, setHistoricoUsuario] = useState([]); 
   const [editandoPetId, setEditandoPetId] = useState(null);
-  const [formEdicaoPet, setFormEdicaoPet] = useState({ nome: '', especie: '', idade: '', adotante_id: '' });
+  const [petExclusaoId, setPetExclusaoId] = useState(null);
 
-  // Carregar dados automaticamente ao abrir a tela
+  // --- TOAST NOTIFICATION ---
+  const [toast, setToast] = useState({ visivel: false, mensagem: '', tipo: 'sucesso' });
+
+  const dispararToast = (mensagem, tipo = 'sucesso') => {
+    setToast({ visivel: true, mensagem, tipo });
+    setTimeout(() => {
+      setToast({ visivel: false, mensagem: '', tipo: 'sucesso' });
+    }, 4000);
+  };
+
+  // Carrega os dados dependendo da página atual
   useEffect(() => {
-    buscarPets();
-    buscarAdotantes();
-  }, []);
+    if (usuarioLogado) {
+      buscarPets();
+    }
+  }, [usuarioLogado, paginaAtual]);
+
+  useEffect(() => {
+    if (usuarioLogado) {
+      buscarAdotantes();
+      if (usuarioLogado.tipo === 'admin') {
+        buscarSolicitacoes();
+      } else {
+        buscarHistoricoUsuario();
+      }
+    }
+  }, [usuarioLogado]);
 
   const buscarPets = async () => {
     try {
-      const response = await fetch('http://localhost:5000/pets');
+      const response = await fetch(`http://localhost:5000/pets?pagina=${paginaAtual}`);
       const data = await response.json();
-      console.log("🐾 Pets recebidos do banco:", data); // ← DIAGNÓSTICO
-      setListaPets(data);
+      setListaPets(data.pets || []);
+      setTotalPaginas(data.totalPaginas || 1);
     } catch (err) {
       console.error("Erro ao buscar pets:", err);
+    }
+  };
+
+  const buscarHistoricoUsuario = async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/solicitacoes/usuario/${usuarioLogado.id}`);
+      const data = await response.json();
+      setHistoricoUsuario(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -35,389 +76,543 @@ function App() {
     try {
       const response = await fetch('http://localhost:5000/adotantes');
       const data = await response.json();
-      setListaAdotantes(data);
+      setListaAdotantes(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Erro ao buscar adotantes:", err);
+      console.error(err);
     }
   };
 
-  // 🐾 Criar Pet
-  const handleSubmitPet = async (e) => {
+  const buscarSolicitacoes = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/solicitacoes');
+      const data = await response.json();
+      setSolicitacoes(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const dadosParaEnvio = {
-        nome: formPet.nome,
-        especie: formPet.especie,
-        idade: formPet.idade,
-        adotante_id: formPet.adotante_id === "" ? null : Number(formPet.adotante_id)
-      };
+      const response = await fetch('http://localhost:5000/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formAuth.email, senha: formAuth.senha })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setUsuarioLogado(data);
+        setFormAuth({ nome: '', email: '', senha: '' });
+      } else {
+        dispararToast(data.mensagem || 'E-mail ou senha incorretos.', 'erro');
+      }
+    } catch (err) {
+      dispararToast('O servidor está indisponível no momento.', 'erro');
+    }
+  };
 
+  const handleCadastroUsuario = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('http://localhost:5000/usuarios', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formAuth)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        dispararToast('Conta criada com sucesso! Faça seu login.', 'sucesso');
+        setFormAuth({ nome: '', email: '', senha: '' });
+        setTelaAutenticacao('login');
+      } else {
+        dispararToast(data.mensagem || 'Este e-mail já está em uso.', 'erro');
+      }
+    } catch (err) {
+      dispararToast('Erro na conexão com o servidor.', 'erro');
+    }
+  };
+
+  const handleLogout = () => {
+    setUsuarioLogado(null);
+    setPaginaAtual(1);
+  };
+
+  const handleCriarPet = async (e) => {
+    e.preventDefault();
+    try {
       const response = await fetch('http://localhost:5000/pets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dadosParaEnvio)
+        body: JSON.stringify(formPet)
       });
-      const text = await response.text();
-      alert(text);
-      setFormPet({ nome: '', especie: '', idade: '', adotante_id: '' });
-      buscarPets();
-    } catch (error) {
-      alert('Erro ao conectar ao servidor backend.');
+      const data = await response.json();
+      if (response.ok) {
+        dispararToast('Animal cadastrado e publicado com sucesso!', 'sucesso');
+        setFormPet({ nome: '', especie: '', idade: '', historia: '' });
+        buscarPets();
+      } else {
+        dispararToast(data.mensagem || 'Erro ao cadastrar o animal.', 'erro');
+      }
+    } catch (err) {
+      dispararToast('Erro operacional no servidor.', 'erro');
     }
   };
 
-  // 👤 Criar Adotante
-  const handleSubmitAdotante = async (e) => {
-    e.preventDefault();
+  const handleConfirmarExclusaoPet = async () => {
     try {
-      const response = await fetch('http://localhost:5000/adotantes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formAdotante)
-      });
-      const text = await response.text();
-      alert(text);
-      setFormAdotante({ nome: '', telefone: '', email: '' });
-      buscarAdotantes();
-      buscarPets(); // ✅ CORREÇÃO: atualiza o select dos cards após novo adotante
-    } catch (error) {
-      alert('Erro ao conectar ao servidor backend.');
-    }
-  };
-
-  //  Excluir Pet
-  const handleDeletarPet = async (id) => {
-    if (window.confirm("Deseja realmente remover este pet?")) {
-      try {
-        const response = await fetch(`http://localhost:5000/pets/${id}`, { method: 'DELETE' });
-        const text = await response.text();
-        alert(text);
+      const response = await fetch(`http://localhost:5000/pets/${petExclusaoId}`, { method: 'DELETE' });
+      if (response.ok) {
+        dispararToast('Ficha do animal removida com sucesso.', 'sucesso');
+        setPetExclusaoId(null);
         buscarPets();
-      } catch (err) {
-        alert("Erro ao excluir.");
       }
+    } catch (err) {
+      dispararToast('Falha ao remover o registro.', 'erro');
     }
   };
 
-  //  Excluir Adotante
-  const handleDeletarAdotante = async (id) => {
-    if (window.confirm("Deseja realmente remover este adotante? Isso pode afetar os pets vinculados a ele.")) {
-      try {
-        const response = await fetch(`http://localhost:5000/adotantes/${id}`, { method: 'DELETE' });
-        const text = await response.text();
-        alert(text);
-        buscarAdotantes();
-        buscarPets();
-      } catch (err) {
-        alert("Erro ao excluir.");
-      }
-    }
-  };
-
-  // ✍️ Entrar no modo de edição do Pet
   const iniciarEdicao = (pet) => {
     setEditandoPetId(pet.id);
-    setFormEdicaoPet({
-      nome: pet.nome,
-      especie: pet.especie,
-      idade: pet.idade,
-      // Se já tem adotante, usa o ID dele. Se não, string vazia = disponível
-      adotante_id: pet.adotante_id !== null && pet.adotante_id !== undefined ? String(pet.adotante_id) : ''
+    setFormEdicaoPet({ 
+      nome: pet.nome, 
+      especie: pet.especie, 
+      idade: pet.idade, 
+      adotante_id: pet.adotante_id || '',
+      historia: pet.historia || ''
     });
   };
 
-  // 💾 Salvar Edição do Pet (UPDATE)
   const handleSalvarEdicaoPet = async (id) => {
     try {
-      // ← DIAGNÓSTICO: mostra o valor bruto do select antes de qualquer conversão
-      console.log("🔍 adotante_id bruto do formulário:", formEdicaoPet.adotante_id, "| tipo:", typeof formEdicaoPet.adotante_id);
-
-      const dadosParaEnvio = {
-        nome: formEdicaoPet.nome,
-        especie: formEdicaoPet.especie,
-        idade: formEdicaoPet.idade,
-        adotante_id: formEdicaoPet.adotante_id === "" ? null : Number(formEdicaoPet.adotante_id)
-      };
-
-      // ← DIAGNÓSTICO: mostra o objeto final que vai pro backend
-      console.log("📦 Dados enviados ao backend:", dadosParaEnvio);
-
       const response = await fetch(`http://localhost:5000/pets/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dadosParaEnvio)
+        body: JSON.stringify(formEdicaoPet)
       });
-      const text = await response.text();
-      alert(text);
-      setEditandoPetId(null);
-      buscarPets();
-      buscarAdotantes(); // ✅ CORREÇÃO: mantém lista de adotantes sincronizada
+      if (response.ok) {
+        dispararToast('Informações atualizadas com sucesso.', 'sucesso');
+        setEditandoPetId(null);
+        buscarPets();
+        buscarAdotantes();
+      }
     } catch (err) {
-      alert("Erro ao salvar alterações.");
+      dispararToast('Erro ao salvar as alterações.', 'erro');
     }
   };
 
-  return (
-    <div className="painel-page">
-      {/* ===== HEADER FIXO ===== */}
-      <header className="painel-header">
-        <div className="painel-logo"> PetONG</div>
-        <nav className="painel-nav">
-          <a href="#dashboard">Dashboard</a>
-          <a href="#pets">Pets</a>
-          <a href="#adotantes">Adotantes</a>
-          <a href="#gerenciamento">Mural de Pets</a>
-        </nav>
-        <div className="painel-badge">Painel Admin</div>
-      </header>
+  const handleSolicitarAdocao = async (petId) => {
+    try {
+      const response = await fetch('http://localhost:5000/solicitacoes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario_id: usuarioLogado.id, pet_id: petId })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        dispararToast('Manifestação de interesse enviada para análise!', 'sucesso');
+        buscarPets();
+        buscarHistoricoUsuario();
+      } else {
+        dispararToast(data.mensagem || 'Você já possui uma solicitação em andamento para este pet.', 'erro');
+      }
+    } catch (err) {
+      dispararToast('Erro ao processar o pedido de adoção.', 'erro');
+    }
+  };
 
-      {/* ===== HERO / DASHBOARD ===== */}
-      <section id="dashboard" className="painel-hero">
-        <div className="painel-hero-circulo"></div>
-        <div className="painel-hero-conteudo">
-          <p className="painel-tagline">Um lar muda tudo</p>
-          <h1>Gerencie sua ONG com <span className="destaque-laranja">facilidade</span></h1>
-          <p>Cadastre pets, acompanhe adotantes e mantenha tudo organizado em tempo real no banco MySQL.</p>
-          <div className="painel-hero-btns">
-            <a href="#pets" className="btn-hero-laranja">Cadastrar Pet</a>
-            <a href="#adotantes" className="btn-hero-outline">Cadastrar Adotante</a>
+  const handleDecidirSolicitacao = async (id, acao) => {
+    try {
+      const response = await fetch(`http://localhost:5000/solicitacoes/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acao })
+      });
+      if (response.ok) {
+        dispararToast(acao === 'aprovar' ? 'Adoção aprovada com sucesso!' : 'Solicitação arquivada.', 'sucesso');
+        buscarSolicitacoes();
+        buscarPets();
+        buscarAdotantes();
+      }
+    } catch (err) {
+      dispararToast('Falha ao processar a decisão.', 'erro');
+    }
+  };
+
+  // ====== VISÃO: TELA DE AUTENTICAÇÃO (LOGIN / CADASTRO) ======
+  if (!usuarioLogado) {
+    return (
+      <div className="login-page-container">
+        {toast.visivel && <div className={`site-toast ${toast.tipo}`}>{toast.mensagem}</div>}
+        <div className="login-split-wrapper">
+          
+          {/* LADO BRANDING (BANNER DINÂMICO) */}
+          <div className="login-brand-side">
+            <div className="brand-logo-tag"> PetONG</div>
+            <h1>Conectando histórias, transformando vidas.</h1>
+            <p>Uma plataforma dedicada à gestão transparente, ágil e humanizada de adoções responsáveis para animais resgatados.</p>
           </div>
-        </div>
-      </section>
-
-      {/* ===== CARDS INDICADORES INTEGRADOS ===== */}
-      <section className="stats-section">
-        <div className="stat-card azul">
-          <div className="stat-icon">🐶</div>
-          <h3>{listaPets.length}</h3>
-          <p>Total de Pets no Banco</p>
-        </div>
-        <div className="stat-card laranja">
-          <div className="stat-icon">👤</div>
-          <h3>{listaAdotantes.length}</h3>
-          <p>Adotantes Registrados</p>
-        </div>
-      </section>
-
-      {/* ===== SEÇÃO: CADASTRAR PET ===== */}
-      <section id="pets" className="form-section form-section-esquerda">
-        <div className="form-section-texto">
-          <p className="section-tag">Animais</p>
-          <h2>Cadastrar <span className="destaque-laranja">Novo Pet</span></h2>
-          <p>Adiciona um novo pet na tabela “pets” do banco de dados.</p>
-        </div>
-        <div className="form-card">
-          <form className="meu-formulario" onSubmit={handleSubmitPet}>
-            <div className="input-group">
-              <label>Nome do Pet</label>
-              <input type="text" value={formPet.nome} onChange={(e) => setFormPet({ ...formPet, nome: e.target.value })} required />
-            </div>
-            <div className="input-group">
-              <label>Espécie</label>
-              <input type="text" value={formPet.especie} onChange={(e) => setFormPet({ ...formPet, especie: e.target.value })} required />
-            </div>
-            <div className="input-group">
-              <label>Idade</label>
-              <input type="text" value={formPet.idade} onChange={(e) => setFormPet({ ...formPet, idade: e.target.value })} />
-            </div>
-            <div className="input-group">
-              <label>Quem Adotou? (Opcional)</label>
-              <select
-                value={formPet.adotante_id}
-                onChange={(e) => setFormPet({ ...formPet, adotante_id: e.target.value })}
-                style={{ width: '100%', padding: '10px', borderRadius: '5px', border: '1px solid #ccc', background: '#fff', marginTop: '5px' }}
-              >
-                <option value="">-- Selecione uma Opção (Disponível) --</option>
-                {listaAdotantes.map(adotante => (
-                  <option key={adotante.id} value={String(adotante.id)}>
-                    {adotante.nome} (ID: #{adotante.id})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button type="submit" className="btn-sucesso">🐾 Salvar no Banco</button>
-          </form>
-        </div>
-      </section>
-
-      {/* ===== SEÇÃO: CADASTRAR ADOTANTE ===== */}
-      <section id="adotantes" className="form-section form-section-direita">
-        <div className="form-card">
-          <form className="meu-formulario" onSubmit={handleSubmitAdotante}>
-            <div className="input-group">
-              <label>Nome Completo</label>
-              <input type="text" value={formAdotante.nome} onChange={(e) => setFormAdotante({ ...formAdotante, nome: e.target.value })} required />
-            </div>
-            <div className="input-group">
-              <label>Telefone</label>
-              <input type="text" value={formAdotante.telefone} onChange={(e) => setFormAdotante({ ...formAdotante, telefone: e.target.value })} required />
-            </div>
-            <div className="input-group">
-              <label>E-mail</label>
-              <input type="email" value={formAdotante.email} onChange={(e) => setFormAdotante({ ...formAdotante, email: e.target.value })} required />
-            </div>
-            <button type="submit" className="btn-sucesso btn-sucesso-laranja"> Cadastrar Adotante</button>
-          </form>
-        </div>
-        <div className="form-section-texto">
-          <p className="section-tag">Pessoas</p>
-          <h2>Cadastrar <span className="destaque-laranja">Adotante</span></h2>
-          <p>Gerencia os dados dos adotantes e suas informações de contato.</p>
-        </div>
-      </section>
-
-      {/* ===== SEÇÃO DE CARDS DO PET ===== */}
-      <section id="gerenciamento" style={{ padding: '60px 5%', background: '#f9f9f9' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '10px' }}> Mural de Pets Cadastrados</h2>
-        <p style={{ textAlign: 'center', color: '#666', marginBottom: '40px' }}>Gerenciamento do CRUD (Visualizar, Editar e Deletar) em tempo real no MySQL</p>
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '25px', justifyContent: 'center' }}>
-          {listaPets.map(pet => (
-            <div key={pet.id} style={{
-              background: '#fff',
-              borderRadius: '15px',
-              boxShadow: '0 4px 15px rgba(0,0,0,0.05)',
-              padding: '25px',
-              width: '280px',
-              borderTop: '5px solid #ff7a00',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between'
-            }}>
-
-              {editandoPetId === pet.id ? (
-                // ===== MODO EDIÇÃO =====
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Nome:</label>
-                  <input
-                    type="text"
-                    style={{ padding: '5px', borderRadius: '5px', border: '1px solid #ccc' }}
-                    value={formEdicaoPet.nome}
-                    onChange={(e) => setFormEdicaoPet({ ...formEdicaoPet, nome: e.target.value })}
-                  />
-
-                  <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Espécie:</label>
-                  <input
-                    type="text"
-                    style={{ padding: '5px', borderRadius: '5px', border: '1px solid #ccc' }}
-                    value={formEdicaoPet.especie}
-                    onChange={(e) => setFormEdicaoPet({ ...formEdicaoPet, especie: e.target.value })}
-                  />
-
-                  <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Idade:</label>
-                  <input
-                    type="text"
-                    style={{ padding: '5px', borderRadius: '5px', border: '1px solid #ccc' }}
-                    value={formEdicaoPet.idade}
-                    onChange={(e) => setFormEdicaoPet({ ...formEdicaoPet, idade: e.target.value })}
-                  />
-
-                  {/* ✅ CAMPO DE ADOTANTE — presente e funcional */}
-                  <label style={{ fontSize: '12px', fontWeight: 'bold' }}>Alterar Adotante:</label>
-                  <select
-                    value={formEdicaoPet.adotante_id}
-                    onChange={(e) => setFormEdicaoPet({ ...formEdicaoPet, adotante_id: e.target.value })}
-                    style={{ padding: '5px', borderRadius: '5px', border: '1px solid #ccc', background: '#fff', width: '100%' }}
-                  >
-                    {/* ✅ CORREÇÃO: texto indica que selecionar vazio remove o adotante */}
-                    <option value="">-- Remover Adotante (Disponível) --</option>
-                    {listaAdotantes.map(adotante => (
-                      <option key={adotante.id} value={String(adotante.id)}>
-                        {adotante.nome} (ID: #{adotante.id})
-                      </option>
-                    ))}
-                  </select>
-
-                  <button
-                    onClick={() => handleSalvarEdicaoPet(pet.id)}
-                    style={{ background: '#28a745', color: '#fff', border: 'none', padding: '8px', borderRadius: '5px', cursor: 'pointer', marginTop: '10px', fontWeight: 'bold' }}
-                  >
-                     Salvar
-                  </button>
-                  <button
-                    onClick={() => setEditandoPetId(null)}
-                    style={{ background: '#6c757d', color: '#fff', border: 'none', padding: '5px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-                  >
-                    Cancelar
-                  </button>
-                </div>
+          
+          {/* LADO DO FORMULÁRIO (CARD PREMIUM) */}
+          <div className="login-card-side">
+            <div className="auth-card-inner">
+              <h2>{telaAutenticacao === 'login' ? 'Acessar Conta' : 'Criar Conta'}</h2>
+              <p className="subtitle-card-auth">
+                {telaAutenticacao === 'login' 
+                  ? 'Insira suas credenciais para entrar no painel administrativo' 
+                  : 'Preencha o formulário abaixo para fazer parte da nossa rede de proteção'}
+              </p>
+              
+              {telaAutenticacao === 'login' ? (
+                <form onSubmit={handleLogin} className="meu-formulario">
+                  <div className="login-field-group">
+                    <label>E-mail Corporativo ou Pessoal</label>
+                    <input type="email" placeholder="seu@email.com" value={formAuth.email} required onChange={(e) => setFormAuth({ ...formAuth, email: e.target.value })} />
+                  </div>
+                  <div className="login-field-group">
+                    <label>Senha de Acesso</label>
+                    <input type="password" placeholder="••••••••" value={formAuth.senha} required onChange={(e) => setFormAuth({ ...formAuth, senha: e.target.value })} />
+                  </div>
+                  <button type="submit" className="btn-login-submit">Entrar no Sistema</button>
+                  <p className="auth-switch-text">
+                    Ainda não tem cadastro? <span onClick={() => { setTelaAutenticacao('cadastro'); setFormAuth({ nome: '', email: '', senha: '' }); }}>Crie uma conta agora</span>
+                  </p>
+                </form>
               ) : (
-                // ===== MODO VISUALIZAÇÃO =====
-                <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-                    <span style={{ background: '#ffe6d5', color: '#ff7a00', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>ID: #{pet.id}</span>
-                    <span style={{ fontSize: '24px' }}>{pet.especie && pet.especie.toLowerCase().includes('gato') ? '🐈' : '🐶'}</span>
+                <form onSubmit={handleCadastroUsuario} className="meu-formulario">
+                  <div className="login-field-group">
+                    <label>Nome Completo</label>
+                    <input type="text" placeholder="Ex: Maria Souza" value={formAuth.nome} required onChange={(e) => setFormAuth({ ...formAuth, nome: e.target.value })} />
                   </div>
-                  <h3 style={{ margin: '0 0 10px 0', color: '#333', fontSize: '22px' }}>{pet.nome}</h3>
-                  <p style={{ margin: '5px 0', color: '#666' }}><strong>Espécie:</strong> {pet.especie}</p>
-                  <p style={{ margin: '5px 0', color: '#666' }}><strong>Idade:</strong> {pet.idade || 'Não informada'}</p>
-
-                  {pet.nome_adotante && pet.nome_adotante.trim() !== "" ? (
-                    <p style={{ margin: '12px 0 5px 0', color: '#28a745', fontSize: '14px', fontWeight: 'bold' }}>
-                       Adotante: {pet.nome_adotante}
-                    </p>
-                  ) : (
-                    <p style={{ margin: '12px 0 5px 0', color: '#007bff', fontSize: '14px', fontWeight: 'bold' }}>
-                       Disponível para Adoção
-                    </p>
-                  )}
-
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                    <button
-                      onClick={() => iniciarEdicao(pet)}
-                      style={{ flex: 1, background: '#ffc107', color: '#000', border: 'none', padding: '8px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
-                       Editar
-                    </button>
-                    <button
-                      onClick={() => handleDeletarPet(pet.id)}
-                      style={{ flex: 1, background: '#dc3545', color: '#fff', border: 'none', padding: '8px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
-                       Excluir
-                    </button>
+                  <div className="login-field-group">
+                    <label>E-mail de Contato</label>
+                    <input type="email" placeholder="seu@email.com" value={formAuth.email} required onChange={(e) => setFormAuth({ ...formAuth, email: e.target.value })} />
                   </div>
-                </div>
+                  <div className="login-field-group">
+                    <label>Crie uma Senha Segura</label>
+                    <input type="password" placeholder="Mínimo de 6 caracteres" value={formAuth.senha} required onChange={(e) => setFormAuth({ ...formAuth, senha: e.target.value })} />
+                  </div>
+                  <button type="submit" className="btn-login-submit unique-register-btn">Finalizar e Criar Conta</button>
+                  <p className="auth-switch-text">
+                    Já possui uma conta ativa? <span onClick={() => { setTelaAutenticacao('login'); setFormAuth({ nome: '', email: '', senha: '' }); }}>Fazer Login</span>
+                  </p>
+                </form>
               )}
             </div>
-          ))}
+          </div>
+
+        </div>
+      </div>
+    );
+  }
+
+  // ====== VISÃO: CONTEÚDO PRINCIPAL (DASHBOARD) ======
+  return (
+    <div className="painel-page">
+      {toast.visivel && <div className={`site-toast ${toast.tipo}`}>{toast.mensagem}</div>}
+      
+      {/* MODAL DE CONFIRMAÇÃO DE EXCLUSÃO */}
+      {petExclusaoId && (
+        <div className="custom-overlay" style={{ display: 'flex', zIndex: 9999 }}>
+          <div className="custom-modal">
+            <div className="modal-icon-warning">⚠️</div>
+            <h3>Excluir Registro?</h3>
+            <p>Esta ação é permanente e removerá permanentemente a ficha deste animal do banco de dados.</p>
+            <div className="modal-actions" style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
+              <button onClick={() => handleConfirmarExclusaoPet()} className="btn-modal-confirm" type="button">Confirmar Exclusão</button>
+              <button onClick={() => setPetExclusaoId(null)} className="btn-modal-cancel" type="button">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* NAVBAR HEADER */}
+      <header className="painel-header">
+        <div className="painel-logo"><span>🐾</span> PetONG</div>
+        <nav className="painel-nav">
+          <div className="user-badge">
+            <div className="avatar-placeholder">{usuarioLogado.nome.charAt(0)}</div>
+            <span className="user-identification">{usuarioLogado.nome} <small>{usuarioLogado.tipo === 'admin' ? 'ADMINISTRADOR' : 'ADOTANTE'}</small></span>
+          </div>
+          <button onClick={handleLogout} className="btn-logout">Sair</button>
+        </nav>
+      </header>
+
+      {/* CONTEÚDO EXCLUSIVO DO ADMINISTRADOR */}
+      {usuarioLogado.tipo === 'admin' && (
+        <>
+          <section className="stats-section">
+            <div className="stat-card">
+              <div className="stat-icon azul">📁</div>
+              <div>
+                <h3>{listaPets.length}</h3>
+                <p>Animais nesta página</p>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-iconSub naranja">⏳</div>
+              <div>
+                <h3>{solicitacoes.length}</h3>
+                <p>Análises de adoção pendentes</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="admin-notifications-area">
+            <div className="area-title-container">
+              <h2>Solicitações de Adoção em Aberto</h2>
+              <p>Analise o perfil dos interessados para homologar a guarda e formalizar o novo tutor.</p>
+            </div>
+            {solicitacoes.length === 0 ? (
+              <p className="no-data-alert">Não há processos de adoção aguardando análise no momento.</p>
+            ) : (
+              <div className="notifications-list">
+                {solicitacoes.map(sol => (
+                  <div key={sol.id} className="notification-row">
+                    <div className="notification-info">
+                      <p>O interessado <strong>{sol.nome_usuario}</strong> ({sol.email_usuario}) manifestou interesse na adoção de <strong>{sol.nome_pet}</strong> ({sol.especie}).</p>
+                    </div>
+                    <div className="notification-control">
+                      <button onClick={() => handleDecidirSolicitacao(sol.id, 'aprovar')} className="btn-action-approve">Aprovar Guarda</button>
+                      <button onClick={() => handleDecidirSolicitacao(sol.id, 'rejeitar')} className="btn-action-decline">Recusar</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="form-section">
+            <div className="form-section-texto">
+              <span className="section-tag">Painel de Controle</span>
+              <h2>Cadastrar Animal Resgatado</h2>
+              <p>Insira os dados cadastrais, porte ou idade estimada e um breve resumo sobre o histórico de resgate do animal para disponibilizá-lo para adoção.</p>
+            </div>
+            <div className="form-card">
+              <form onSubmit={handleCriarPet} className="meu-formulario">
+                <div className="form-row-duplo">
+                  <div className="input-group">
+                    <label>Nome do Pet</label>
+                    <input type="text" placeholder="Ex: Fred" value={formPet.nome} required onChange={(e) => setFormPet({ ...formPet, nome: e.target.value })} />
+                  </div>
+                  <div className="input-group">
+                    <label>Espécie</label>
+                    <input type="text" placeholder="Ex: Cão, Gato..." value={formPet.especie} required onChange={(e) => setFormPet({ ...formPet, especie: e.target.value })} />
+                  </div>
+                </div>
+                <div className="input-group">
+                  <label>Idade Estimada</label>
+                  <input type="text" placeholder="Ex: 2 anos" value={formPet.idade} required onChange={(e) => setFormPet({ ...formPet, idade: e.target.value })} />
+                </div>
+                <div className="input-group">
+                  <label>História / Detalhes do Resgate</label>
+                  <textarea rows="3" placeholder="Conte um pouco sobre as características e o resgate do pet..." value={formPet.historia} onChange={(e) => setFormPet({ ...formPet, historia: e.target.value })} />
+                </div>
+                <button type="submit" className="btn-sucesso">Publicar Ficha no Mural</button>
+              </form>
+            </div>
+          </section>
+        </>
+      )}
+
+      {/* CONTEÚDO EXCLUSIVO DO ADOTANTE */}
+      {usuarioLogado.tipo === 'user' && (
+        <>
+          <section className="institucional-section">
+            <div className="institucional-banner">
+              <div className="institucional-content">
+                <span className="section-tag">Espaço do Adotante</span>
+                <h1>Adotar é transformar um futuro.</h1>
+                <p>
+                  Seja bem-vindo à nossa rede de proteção. Abaixo, você pode conferir todos os animais que aguardam um lar e acompanhar o andamento das suas solicitações em tempo real.
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="table-section-wrapper" style={{ marginTop: '40px' }}>
+            <div className="table-section-header">
+              <span className="section-tag" style={{ marginBottom: '5px' }}>Acompanhamento</span>
+              <h3>Minhas Solicitações de Adoção</h3>
+              <p>Consulte abaixo os pedidos de adoção enviados e confira o parecer da equipe técnica.</p>
+            </div>
+            {historicoUsuario.length === 0 ? (
+              <p className="no-data-alert">Você ainda não enviou intenções de adoção. Escolha um amigo no mural abaixo e mude uma vida!</p>
+            ) : (
+              <div className="adotantes-table-container">
+                <table className="custom-table">
+                  <thead>
+                    <tr>
+                      <th>Nome do Animal</th>
+                      <th>Espécie</th>
+                      <th>Idade</th>
+                      <th>Data do Pedido</th>
+                      <th>Status do Processo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historicoUsuario.map(item => (
+                      <tr key={item.id}>
+                        <td><strong>{item.nome_pet}</strong></td>
+                        <td>{item.especie}</td>
+                        <td>{item.idade}</td>
+                        <td>{new Date(item.data_solicitacao).toLocaleDateString('pt-BR')}</td>
+                        <td>
+                          <span className={`premium-status-badge ${item.status === 'pendente' ? 'pendente' : item.status === 'aprovado' ? 'disponivel' : 'adotado'}`}>
+                            {item.status === 'pendente' && '⏳ Em Análise'}
+                            {item.status === 'aprovado' && '✅ Aprovado'}
+                            {item.status === 'recusado' && '❌ Cancelado'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+        </>
+      )}
+
+      {/* SECTION MURAL: LISTAGEM DIRETA SEM FILTROS */}
+      <section className="mural-principal">
+        <div className="mural-section-title">
+          <h2>Mural de Animais Cadastrados</h2>
+          <p>Navegue pelas fichas completas integradas em tempo real com nossa base de dados.</p>
         </div>
 
-        {/* 👤 LISTA DE ADOTANTES */}
-        <div style={{ marginTop: '60px' }}>
-          <h3 style={{ textAlign: 'center', marginBottom: '20px' }}> Adotantes Responsáveis Cadastrados</h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', justifyContent: 'center' }}>
-            {listaAdotantes.map(adotante => (
-              <div key={adotante.id} style={{
-                background: '#fff',
-                padding: '15px 20px',
-                borderRadius: '10px',
-                boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '20px'
-              }}>
-                <div>
-                  <h4 style={{ margin: 0, color: '#333' }}>
-                    {adotante.nome} <span style={{ fontSize: '11px', color: '#999' }}>(ID: #{adotante.id})</span>
-                  </h4>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#666' }}>
-                    📞 {adotante.telefone} | ✉️ {adotante.email}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleDeletarAdotante(adotante.id)}
-                  style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', fontSize: '16px' }}
-                >
-                  🗑️
-                </button>
+        {/* MURAL DE CARDS */}
+        <div className="grid-mural-pets" style={{ marginTop: '20px' }}>
+          {listaPets.length === 0 ? (
+            <div className="no-data-alert" style={{ gridColumn: '1/-1', padding: '60px' }}>
+              Nenhum animal listado nesta página ou cadastrado no banco de dados.
+            </div>
+          ) : (
+            listaPets.map(pet => (
+              <div key={pet.id} className={`pet-card-premium ${pet.status_adocao}`}>
+                {editandoPetId === pet.id ? (
+                  <div className="meu-formulario form-edicao-inline">
+                    <input type="text" value={formEdicaoPet.nome} onChange={(e) => setFormEdicaoPet({ ...formEdicaoPet, nome: e.target.value })} placeholder="Nome" />
+                    <input type="text" value={formEdicaoPet.especie} onChange={(e) => setFormEdicaoPet({ ...formEdicaoPet, especie: e.target.value })} placeholder="Espécie" />
+                    <input type="text" value={formEdicaoPet.idade} onChange={(e) => setFormEdicaoPet({ ...formEdicaoPet, idade: e.target.value })} placeholder="Idade" />
+                    <textarea rows="3" value={formEdicaoPet.historia} onChange={(e) => setFormEdicaoPet({ ...formEdicaoPet, historia: e.target.value })} placeholder="História" />
+                    
+                    <div className="input-group">
+                      <label style={{ fontSize: '11px', fontWeight: '700' }}>Vincular Tutor Fixo</label>
+                      <select value={formEdicaoPet.adotante_id} onChange={(e) => setFormEdicaoPet({ ...formEdicaoPet, adotante_id: e.target.value })}>
+                        <option value="">Disponível para Adoção</option>
+                        {listaAdotantes.map(ad => (
+                          <option key={ad.id} value={ad.id}>{ad.nome} (ID: #{ad.id})</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="edicao-inline-buttons">
+                      <button onClick={() => handleSalvarEdicaoPet(pet.id)} className="btn-sucesso-salvar">Gravar</button>
+                      <button onClick={() => setEditandoPetId(null)} className="btn-cancelar-edicao">Cancelar</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="premium-card-inner">
+                    <div className="premium-card-top">
+                      <span className="premium-specie">{pet.especie}</span>
+                      <span className={`premium-status-badge ${pet.status_adocao}`}>
+                        {pet.status_adocao === 'disponivel' && 'Disponível'}
+                        {pet.status_adocao === 'pendente' && 'Em Análise'}
+                        {pet.status_adocao === 'adotado' && 'Adotado'}
+                      </span>
+                    </div>
+                    
+                    <div className="premium-card-mid">
+                      <h3>{pet.nome}</h3>
+                      <div className="premium-age-tag">🕒 {pet.idade || 'Idade não informada'}</div>
+                      <p className="premium-story-text">
+                        {pet.historia ? `"${pet.historia}"` : '"História carinhosa em fase de catalogação por nossos voluntários."'}
+                      </p>
+                    </div>
+
+                    <div className="premium-card-bottom">
+                      {pet.status_adocao === 'adotado' && (
+                        <div className="tutor-assigned-box">
+                          👤 Tutor Responsável: <strong>{pet.nome_adotante || 'Perfil Vinculado'}</strong>
+                        </div>
+                      )}
+
+                      <div className="premium-actions-wrapper">
+                        {usuarioLogado.tipo === 'admin' ? (
+                          <div className="admin-grid-actions">
+                            <button onClick={() => iniciarEdicao(pet)} className="btn-grid-edit">Editar Ficha</button>
+                            <button onClick={() => setPetExclusaoId(pet.id)} className="btn-grid-delete">Remover</button>
+                          </div>
+                        ) : (
+                          !pet.adotante_id && pet.status_adocao === 'disponivel' && (
+                            <button onClick={() => handleSolicitarAdocao(pet.id)} className="btn-solicitar-adocao">Quero Adotar</button>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            ))
+          )}
+        </div>
+
+        {/* CONTAINER DA PAGINAÇÃO REAL */}
+        <div className="pagination-bar-wrapper">
+          <button 
+            disabled={paginaAtual === 1} 
+            onClick={() => setPaginaAtual(prev => prev - 1)}
+            className="btn-pagination-nav"
+          >
+            ← Anterior
+          </button>
+          
+          <span className="pagination-info-text">
+            Página <strong>{paginaAtual}</strong> de <strong>{totalPaginas}</strong>
+          </span>
+
+          <button 
+            disabled={paginaAtual === totalPaginas} 
+            onClick={() => setPaginaAtual(prev => prev + 1)}
+            className="btn-pagination-nav"
+          >
+            Próxima →
+          </button>
         </div>
       </section>
 
+      {/* TABELA DE ADOTANTES (ADMIN) */}
+      {usuarioLogado.tipo === 'admin' && (
+        <section className="table-section-wrapper">
+          <div className="table-section-header">
+            <h3>Base de Usuários e Adotantes Cadastrados</h3>
+            <p>Relação de perfis registrados no ecossistema PetONG.</p>
+          </div>
+          <div className="adotantes-table-container">
+            <table className="custom-table">
+              <thead>
+                <tr>
+                  <th>Código Identificador</th>
+                  <th>Nome Completo</th>
+                  <th>E-mail de Contato</th>
+                </tr>
+              </thead>
+              <tbody>
+                {listaAdotantes.map(ad => (
+                  <tr key={ad.id}>
+                    <td><strong>#{ad.id}</strong></td>
+                    <td>{ad.nome}</td>
+                    <td><span className="table-email-span">{ad.email}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       <footer className="painel-footer">
-        <p>© 2026 PetONG — Desenvolvido por Rafaela Nunes.</p>
+        <p>© 2026 PetONG Platform — Painel Corporativo de Gestão de Bem-Estar Animal.</p>
       </footer>
     </div>
   );
