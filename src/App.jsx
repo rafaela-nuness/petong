@@ -29,7 +29,7 @@ function App() {
   const dispararToast = (mensagem, tipo = 'sucesso') => {
     setToast({ visivel: true, mensagem, tipo });
     setTimeout(() => {
-      setToast({ visivel: false, mensagem: '', tipo: 'sucesso' });
+      setToast({ visivel: false, message: '', tipo: 'sucesso' });
     }, 4000);
   };
 
@@ -195,6 +195,8 @@ function App() {
         setEditandoPetId(null);
         buscarPets();
         buscarAdotantes();
+      } else {
+        dispararToast('Erro ao atualizar dados no servidor.', 'erro');
       }
     } catch (err) {
       dispararToast('Erro ao salvar as alterações.', 'erro');
@@ -331,7 +333,7 @@ function App() {
         <div className="painel-logo"><span>🐾</span> PetONG</div>
         <nav className="painel-nav">
           <div className="user-badge">
-            <div className="avatar-placeholder">{usuarioLogado.nome.charAt(0)}</div>
+            <div className="avatar-placeholder">{usuarioLogado.nome ? usuarioLogado.nome.charAt(0) : 'U'}</div>
             <span className="user-identification">{usuarioLogado.nome} <small>{usuarioLogado.tipo === 'admin' ? 'ADMINISTRADOR' : 'ADOTANTE'}</small></span>
           </div>
           <button onClick={handleLogout} className="btn-logout">Sair</button>
@@ -456,7 +458,7 @@ function App() {
                         <td><strong>{item.nome_pet}</strong></td>
                         <td>{item.especie}</td>
                         <td>{item.idade}</td>
-                        <td>{new Date(item.data_solicitacao).toLocaleDateString('pt-BR')}</td>
+                        <td>{item.data_solicitacao ? new Date(item.data_solicitacao).toLocaleDateString('pt-BR') : '---'}</td>
                         <td>
                           <span className={`premium-status-badge ${item.status === 'pendente' ? 'pendente' : item.status === 'aprovado' ? 'disponivel' : 'adotado'}`}>
                             {item.status === 'pendente' && '⏳ Em Análise'}

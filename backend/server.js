@@ -58,7 +58,7 @@ app.post('/usuarios', (req, res) => {
     });
 });
 
-// ====== CRUD DE PETS: APENAS PAGINAÇÃO GERAL ======
+// ====== CRUD DE PETS: APENAS PAGINAÇÃO GERAL CORRIGIDA ======
 app.get('/pets', (req, res) => {
     const { pagina } = req.query;
     
@@ -74,15 +74,25 @@ app.get('/pets', (req, res) => {
         const totalItens = countResults[0].total;
         const totalPaginas = Math.ceil(totalItens / itensPorPagina);
 
+        // CORREÇÃO AQUI: Garante que pets.nome seja explicitamente mapeado sem conflitos
         const sqlDados = `
-            SELECT pets.*, adotantes.nome AS nome_adotante 
+            SELECT 
+                pets.id, 
+                pets.nome, 
+                pets.especie, 
+                pets.idade, 
+                pets.historia, 
+                pets.status_adocao, 
+                pets.adotante_id, 
+                adotantes.nome AS nome_adotante 
             FROM pets 
             LEFT JOIN adotantes ON pets.adotante_id = adotantes.id
             ORDER BY pets.id DESC
             LIMIT ? OFFSET ?
         `;
         
-        db.query(sqlDados, [itensPorPagina, offset], (errData, dataResults) => {
+        // CORREÇÃO AQUI: Passando os valores explicitamente tipados como inteiros
+        db.query(sqlDados, [Number(itensPorPagina), Number(offset)], (errData, dataResults) => {
             if (errData) return res.status(500).send(errData);
             
             res.json({
